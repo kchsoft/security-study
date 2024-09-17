@@ -37,7 +37,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import security_study.auth.domain.CustomUserDetails;
-import security_study.auth.jwt.JWTUtil;
+import security_study.auth.jwt.JwtUtil;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -63,7 +63,7 @@ public class MockAuthenticationManagerTest {
   private MockMvc mockMvc;
 
   @Autowired // spring context의 bean을 가져옴, spring 전체 기능을 통합적으로 테스트 할 시 사용
-  private JWTUtil jwtUtil;
+  private JwtUtil jwtUtil;
 
   @Autowired
   ObjectMapper objectMapper;

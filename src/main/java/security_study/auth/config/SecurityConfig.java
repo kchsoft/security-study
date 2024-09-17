@@ -17,10 +17,15 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
-import security_study.auth.jwt.JWTFilter;
-import security_study.auth.jwt.JWTUtil;
 import security_study.auth.jwt.JwtAuthenticationFilter;
+import security_study.auth.jwt.JwtConverter;
+import security_study.auth.jwt.JwtFilter;
+import security_study.auth.jwt.JwtLogoutFilter;
+import security_study.auth.jwt.JwtUtil;
+import security_study.auth.repository.RefreshTokenRepository;
+import security_study.auth.service.CookieUtil;
 
 // jwt - http header O
 // jwt - cookie X
@@ -32,8 +37,11 @@ public class SecurityConfig {
 
   private final CorsConfigurationSource corsConfigurationSource;
   private final AuthenticationConfiguration authenticationConfiguration;
-  private final JWTUtil jwtUtil;
+  private final JwtUtil jwtUtil;
+  private final JwtConverter jwtConverter;
+  private final CookieUtil cookieUtil;
   private final ObjectMapper objectMapper;
+  private final RefreshTokenRepository refreshTokenRepository;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -41,13 +49,14 @@ public class SecurityConfig {
     http.cors(
         cors -> cors.configurationSource(corsConfigurationSource)); // security 필터 차원에서의 cors 방지
     http.httpBasic(httpBasic -> httpBasic.disable());
-    http.formLogin(formLogin -> formLogin.disable());
+    http.formLogin(formLogin -> formLogin.disable()); // UsernamePass..Authen...Filter 를 사용하지 않는다.
+    http.logout(logout -> logout.disable()); // logoutFilter를 사용하지 않는다.
 
     http.authorizeHttpRequests(
         auth ->
-            auth.requestMatchers(HttpMethod.GET,"/")
+            auth.requestMatchers(HttpMethod.GET, "/")
                 .permitAll()
-                .requestMatchers(HttpMethod.POST,"/join")
+                .requestMatchers(HttpMethod.POST, "/join", "/reissue")
                 .permitAll()
                 .requestMatchers("/member")
                 .hasRole(MEMBER)
@@ -59,22 +68,21 @@ public class SecurityConfig {
     http.sessionManagement(
         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-    http.addFilterBefore(new JWTFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
+    http.addFilterBefore(new JwtFilter(jwtUtil), JwtAuthenticationFilter.class);
     http.addFilterAt(
-        new JwtAuthenticationFilter(authenticationManager(authenticationConfiguration), jwtUtil,objectMapper),
-        UsernamePasswordAuthenticationFilter.class); // 로그인을 위한 필터이다. 기본적으로 /login 요청이 들어오면 필터가 시작된다.
-
+        new JwtAuthenticationFilter(
+            authenticationManager(authenticationConfiguration),
+            jwtUtil,
+            jwtConverter,
+            cookieUtil,
+            objectMapper,
+            refreshTokenRepository),
+        UsernamePasswordAuthenticationFilter
+            .class); // 로그인을 위한 필터이다. 기본적으로 /login 요청이 들어오면 필터가 시작된다.
+    http.addFilterAt(
+        new JwtLogoutFilter(jwtUtil, cookieUtil, refreshTokenRepository), LogoutFilter.class);
     return http.build();
   }
-
-  //    @Bean
-  //    public UserDetailsService userDetailsService() {
-  //        UserDetails user = User.withUsername("user")
-  //                .password(passwordEncoder().encode("password"))
-  //                .roles("ADMIN")
-  //                .build();
-  //        return new InMemoryUserDetailsManager(user);
-  //    }
 
   @Bean
   public PasswordEncoder passwordEncoder() {

@@ -7,5 +7,6 @@ import lombok.Getter;
 @Builder
 public class LoginResponseDto {
   private String username;
+  private String accessToken;
   private Boolean isLogin;
 }

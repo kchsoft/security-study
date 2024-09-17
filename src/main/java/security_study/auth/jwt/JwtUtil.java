@@ -1,21 +1,25 @@
 package security_study.auth.jwt;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class JWTUtil {
+public class JwtUtil {
 
   private SecretKey secretKey;
+  private final String CATEGORY = "category";
   private final String USERNAME = "username";
+  private final String UNIQUE_ID = "unique_id";
   private final String ROLE = "role";
 
-  public JWTUtil(@Value("${security.jwt.secret}") String secret) {
+  public JwtUtil(@Value("${security.jwt.secret}") String secret) {
 
     this.secretKey =
         new SecretKeySpec(
@@ -42,8 +46,7 @@ public class JWTUtil {
         .get(ROLE, String.class);
   }
 
-  public Boolean isExpired(String token) {
-    try{
+  public Boolean isExpired(String token) throws ExpiredJwtException {
 
     return Jwts.parser()
         .verifyWith(secretKey)
@@ -52,19 +55,37 @@ public class JWTUtil {
         .getPayload()
         .getExpiration()
         .before(new Date());
-    } catch (Exception e){
-        return true;
-    }
-
   }
 
-  public String createJwt(String username, String role, Long expiredMs) {
+  public String getCategory(String token) {
 
+    return Jwts.parser()
+        .verifyWith(secretKey)
+        .build()
+        .parseSignedClaims(token)
+        .getPayload()
+        .get(CATEGORY, String.class);
+  }
+
+  public Date getExpiration(String token) {
+    return Jwts.parser()
+        .verifyWith(secretKey)
+        .build()
+        .parseSignedClaims(token)
+        .getPayload()
+        .getExpiration();
+  }
+
+  public String createJwt(String category, String username, String role, Long expiredMs) {
+    Long issuedMs = System.currentTimeMillis();
+    String uniqueId = UUID.randomUUID().toString();
     return Jwts.builder()
+        .claim(CATEGORY, category)
         .claim(USERNAME, username)
+        .claim(UNIQUE_ID, uniqueId)
         .claim(ROLE, role)
-        .issuedAt(new Date(System.currentTimeMillis()))
-        .expiration(new Date(System.currentTimeMillis() + expiredMs))
+        .issuedAt(new Date(issuedMs))
+        .expiration(new Date(issuedMs + expiredMs))
         .signWith(secretKey)
         .compact();
   }

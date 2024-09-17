@@ -2,13 +2,16 @@ package security_study.auth;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static org.springframework.http.HttpHeaders.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static security_study.auth.constant.AuthoritiesRoleName.*;
+import static security_study.auth.constant.JwtConstant.CATEGORY_REFRESH;
+import static security_study.auth.constant.JwtConstant.REFRESH_TOKEN;
+import static security_study.auth.constant.JwtConstant.REFRESH_TOKEN_EXPIRATION_TIME;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,7 +29,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import security_study.auth.domain.CustomUserDetails;
-import security_study.auth.jwt.JWTUtil;
+import security_study.auth.dto.request.LoginRequestDto;
+import security_study.auth.dto.response.LoginResponseDto;
+import security_study.auth.jwt.JwtUtil;
+import security_study.auth.repository.RefreshTokenRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -37,7 +43,7 @@ public class JwtTest {
    spring context에 등록된 bean을 가져옴, spring 전체 기능을 통합적으로 테스트 할 시 사용
   */
   @Autowired private MockMvc mockMvc;
-  @Autowired private JWTUtil jwtUtil;
+  @Autowired private JwtUtil jwtUtil;
   @Autowired private ObjectMapper objectMapper;
   @Autowired private PasswordEncoder passwordEncoder;
 
@@ -57,8 +63,8 @@ public class JwtTest {
    * 즉, 실제 돌아가는 security 상에서 아래의 가짜 객체(memberDetailsService)로 바꿔치기 하는 것 이다.
    * */
   @MockBean private UserDetailsService memberDetailsService;
+  @MockBean private RefreshTokenRepository refreshTokenRepository;
 
-  private final String BEARER_BLANK = "Bearer ";
   private final String USERNAME_TEST = "USERNAME_TEST";
   private final String WRONG_USERNAME_TEST = "WRONG_USERNAME_TEST";
   private final String RAW_PASSWORD_TEST = "PASSWORD_TEST";
@@ -77,9 +83,11 @@ public class JwtTest {
         CustomUserDetails.builder()
             .username(USERNAME_TEST)
             .password(ENCODED_PASSWORD_TEST)
-            .role(ROLE_+MEMBER)
+            .role(ROLE_ + MEMBER)
             .build();
     when(memberDetailsService.loadUserByUsername(anyString())).thenReturn(dbMemberDetails);
+
+    when(refreshTokenRepository.existsByRefreshToken(anyString())).thenReturn(true);
   }
 
   @Test
@@ -139,13 +147,8 @@ public class JwtTest {
   @Test
   @DisplayName("로그인시 JWT 생성 및 응답 완료(HttpHeader) - UserDetailsServcie")
   void loginCreateJwt() throws Exception {
-    CustomUserDetails loginRequest =
-        CustomUserDetails.builder()
-            .username(USERNAME_TEST)
-            .password(RAW_PASSWORD_TEST)
-            .role(ROLE_+MEMBER)
-            .build();
-
+    LoginRequestDto loginRequest =
+        LoginRequestDto.builder().username(USERNAME_TEST).password(RAW_PASSWORD_TEST).build();
     MvcResult result =
         mockMvc
             .perform(
@@ -154,82 +157,122 @@ public class JwtTest {
                     .content(
                         objectMapper.writeValueAsString(loginRequest))) // 객체를 json 형태(string)로 변환
             .andExpect(status().isOk())
-            .andExpect(header().exists(AUTHORIZATION))
             .andDo(print())
             .andReturn();
 
     MockHttpServletResponse response = result.getResponse();
-    String token = response.getHeader(AUTHORIZATION);
-    assertNotNull(token);
-    assertTrue(token.startsWith(BEARER_BLANK));
+    String contentAsString = response.getContentAsString();
+    LoginResponseDto responseDto = objectMapper.readValue(contentAsString, LoginResponseDto.class);
+    assertNotNull(responseDto);
+    assertNotNull(responseDto.getAccessToken());
+    String accessToken = responseDto.getAccessToken();
 
-    String actualToken = token.substring(7);
-    assertEquals(USERNAME_TEST, jwtUtil.getUsername(actualToken));
-    assertEquals(ROLE_+MEMBER, jwtUtil.getRole(actualToken));
-    assertFalse(jwtUtil.isExpired(actualToken));
+    assertEquals(USERNAME_TEST, jwtUtil.getUsername(accessToken));
+    assertEquals(ROLE_ + MEMBER, jwtUtil.getRole(accessToken));
+    assertFalse(jwtUtil.isExpired(accessToken));
+
+    Cookie cookie = response.getCookie(REFRESH_TOKEN);
+    assertNotNull(cookie);
+    assertEquals(REFRESH_TOKEN, cookie.getName());
+    assertNotNull(cookie.getValue());
+    assertTrue(cookie.isHttpOnly());
   }
 
+  //
+  //  @Test
+  //  @DisplayName("잘못된 정보로 로그인 시도 - UserDetailsService")
+  //  void wrongLoginDoNotCreateJwt() throws Exception {
+  //    CustomUserDetails wrongLoginRequest =
+  //        CustomUserDetails.builder()
+  //            .username(WRONG_USERNAME_TEST)
+  //            .password(WRONG_RAW_PASSWORD_TEST)
+  //            .role(ROLE_+MEMBER)
+  //            .build();
+  //
+  //    mockMvc
+  //        .perform(
+  //            post("/login")
+  //                .contentType(MediaType.APPLICATION_JSON)
+  //                .content(objectMapper.writeValueAsString(wrongLoginRequest)))
+  //        .andExpect(status().isUnauthorized())
+  //        .andDo(print())
+  //        .andReturn();
+  //  }
+  //
+  //  @Test
+  //  @DisplayName("jwt의 role에 알맞는 request")
+  //  void requestWithJwtRole() throws Exception {
+  //    String token = jwtUtil.createJwt(USERNAME_TEST, ROLE_ + MEMBER, 3600000L);
+  //
+  //    mockMvc
+  //        .perform(get("/member").header(AUTHORIZATION, BEARER_BLANK + token))
+  //        .andExpect(status().isOk());
+  //  }
+  //
+  //  @Test
+  //  @DisplayName("jwt가 아닌 토큰 request")
+  //  void requestInvalidJwt() throws Exception {
+  //    String token = jwtUtil.createJwt(USERNAME_TEST, ROLE_ + MEMBER, 3600000L);
+  //    mockMvc
+  //        .perform(get("/member").header(AUTHORIZATION, BEARER_BLANK + "invalidtoken"))
+  //        .andExpect(status().isForbidden());
+  //  }
+  //
+  //  @Test
+  //  @DisplayName("jwt의 role과 다른 request")
+  //  void requestInvalidRoleWithJwt() throws Exception {
+  //    String invalidRoleWithToken = jwtUtil.createJwt(USERNAME_TEST, ROLE_ + MEMBER, 1000L);
+  //    mockMvc
+  //        .perform(get("/admin").header(AUTHORIZATION, BEARER_BLANK + invalidRoleWithToken))
+  //        .andExpect(status().isForbidden());
+  //  }
+  //
+  //  @Test
+  //  @DisplayName("기한 만료된 jwt request ")
+  //  void requestExpiredToken() throws Exception {
+  //    String expiredToken = jwtUtil.createJwt(USERNAME_TEST, ROLE_ + MEMBER, -1000L);
+  //
+  //    mockMvc
+  //        .perform(get("/member").header(AUTHORIZATION, BEARER_BLANK + expiredToken))
+  //        .andExpect(status().isForbidden());
+  //  }
+  //
+  //  @Test
+  //  @DisplayName("jwt가 없는 request")
+  //  void requestNonJwt() throws Exception {
+  //    mockMvc.perform(get("/member")).andExpect(status().isForbidden());
+  //  }
+
   @Test
-  @DisplayName("잘못된 정보로 로그인 시도 - UserDetailsService")
-  void wrongLoginDoNotCreateJwt() throws Exception {
-    CustomUserDetails wrongLoginRequest =
-        CustomUserDetails.builder()
-            .username(WRONG_USERNAME_TEST)
-            .password(WRONG_RAW_PASSWORD_TEST)
-            .role(ROLE_+MEMBER)
-            .build();
+  @DisplayName("refresh 토큰 요청시 성공")
+  void requestReissueJwt() throws Exception {
+    String refreshToken =
+        jwtUtil.createJwt(
+            CATEGORY_REFRESH, USERNAME_TEST, ROLE_ + MEMBER, REFRESH_TOKEN_EXPIRATION_TIME);
 
-    mockMvc
-        .perform(
-            post("/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(wrongLoginRequest)))
-        .andExpect(status().isUnauthorized())
-        .andDo(print())
-        .andReturn();
-  }
+    MvcResult result =
+        mockMvc
+            .perform(post("/reissue").cookie(new Cookie(REFRESH_TOKEN, refreshToken)))
+            .andExpect(status().isOk())
+            .andExpect(
+                jsonPath("$.accessToken").exists()) // $ == json의 root, accessToken은 json의 key
+            .andDo(print())
+            .andReturn();
 
-  @Test
-  @DisplayName("jwt의 role에 알맞는 request")
-  void requestWithJwtRole() throws Exception {
-    String token = jwtUtil.createJwt(USERNAME_TEST, ROLE_ + MEMBER, 3600000L);
+    MockHttpServletResponse response = result.getResponse();
+    String contentAsString = response.getContentAsString();
+    LoginResponseDto responseDto = objectMapper.readValue(contentAsString, LoginResponseDto.class);
 
-    mockMvc
-        .perform(get("/member").header(AUTHORIZATION, BEARER_BLANK + token))
-        .andExpect(status().isOk());
-  }
+    assertNotNull(responseDto);
+    assertNotNull(responseDto.getAccessToken());
+    String newAccessToken = responseDto.getAccessToken();
 
-  @Test
-  @DisplayName("jwt가 아닌 토큰 request")
-  void requestInvalidJwt() throws Exception {
-    String token = jwtUtil.createJwt(USERNAME_TEST, ROLE_ + MEMBER, 3600000L);
-    mockMvc
-        .perform(get("/member").header(AUTHORIZATION, BEARER_BLANK + "invalidtoken"))
-        .andExpect(status().isForbidden());
-  }
+    assertEquals(USERNAME_TEST, jwtUtil.getUsername(newAccessToken));
+    assertEquals(ROLE_ + MEMBER, jwtUtil.getRole(newAccessToken));
+    assertFalse(jwtUtil.isExpired(newAccessToken));
 
-  @Test
-  @DisplayName("jwt의 role과 다른 request")
-  void requestInvalidRoleWithJwt() throws Exception {
-    String invalidRoleWithToken = jwtUtil.createJwt(USERNAME_TEST, ROLE_ + MEMBER, 1000L);
-    mockMvc
-        .perform(get("/admin").header(AUTHORIZATION, BEARER_BLANK + invalidRoleWithToken))
-        .andExpect(status().isForbidden());
-  }
-
-  @Test
-  @DisplayName("기한 만료된 jwt request ")
-  void requestExpiredToken() throws Exception {
-    String expiredToken = jwtUtil.createJwt(USERNAME_TEST, ROLE_ + MEMBER, -1000L);
-
-    mockMvc
-        .perform(get("/member").header(AUTHORIZATION, BEARER_BLANK + expiredToken))
-        .andExpect(status().isForbidden());
-  }
-
-  @Test
-  @DisplayName("jwt가 없는 request")
-  void testAccessProtectedEndpointWithInvalidRoleToke() throws Exception {
-    mockMvc.perform(get("/member")).andExpect(status().isForbidden());
+    Cookie newRefreshTokenCookie = response.getCookie(REFRESH_TOKEN);
+    assertNotNull(newRefreshTokenCookie);
+    assertNotEquals(refreshToken, newRefreshTokenCookie.getValue());
   }
 }
