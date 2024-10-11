@@ -20,12 +20,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 import security_study.auth.jwt.JwtAuthenticationFilter;
-import security_study.auth.jwt.JwtConverter;
-import security_study.auth.jwt.JwtFilter;
+import security_study.auth.jwt.JwtValidationFilter;
 import security_study.auth.jwt.JwtLogoutFilter;
-import security_study.auth.jwt.JwtUtil;
-import security_study.auth.repository.RefreshTokenRepository;
-import security_study.auth.service.CookieUtil;
+import security_study.auth.repository.RefreshTokenCacheRepository;
 
 // jwt - http header O
 // jwt - cookie X
@@ -37,11 +34,8 @@ public class SecurityConfig {
 
   private final CorsConfigurationSource corsConfigurationSource;
   private final AuthenticationConfiguration authenticationConfiguration;
-  private final JwtUtil jwtUtil;
-  private final JwtConverter jwtConverter;
-  private final CookieUtil cookieUtil;
   private final ObjectMapper objectMapper;
-  private final RefreshTokenRepository refreshTokenRepository;
+  private final RefreshTokenCacheRepository refreshTokenCacheRepository;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -68,19 +62,16 @@ public class SecurityConfig {
     http.sessionManagement(
         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-    http.addFilterBefore(new JwtFilter(jwtUtil), JwtAuthenticationFilter.class);
+    http.addFilterBefore(new JwtValidationFilter(), JwtAuthenticationFilter.class);
     http.addFilterAt(
         new JwtAuthenticationFilter(
             authenticationManager(authenticationConfiguration),
-            jwtUtil,
-            jwtConverter,
-            cookieUtil,
             objectMapper,
-            refreshTokenRepository),
+            refreshTokenCacheRepository),
         UsernamePasswordAuthenticationFilter
             .class); // 로그인을 위한 필터이다. 기본적으로 /login 요청이 들어오면 필터가 시작된다.
     http.addFilterAt(
-        new JwtLogoutFilter(jwtUtil, cookieUtil, refreshTokenRepository), LogoutFilter.class);
+        new JwtLogoutFilter(refreshTokenCacheRepository), LogoutFilter.class);
     return http.build();
   }
 

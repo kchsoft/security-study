@@ -8,24 +8,24 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import security_study.auth.dto.request.JoinRequestDto;
 import security_study.auth.entity.MemberEntity;
-import security_study.auth.repository.UserRepository;
+import security_study.auth.repository.MemberRepository;
 
 @Service
 @RequiredArgsConstructor
 public class JoinService {
 
-  private final UserRepository userRepository;
+  private final MemberRepository memberRepository;
   private final PasswordEncoder passwordEncoder;
 
-  public void joinProcess(JoinRequestDto joinRequestDto) {
+  public boolean joinProcess(JoinRequestDto joinRequestDto) {
 
     String username = joinRequestDto.getUsername();
     String password = joinRequestDto.getPassword();
 
-    Boolean isExist = userRepository.existsByUsername(username);
+    Boolean isExist = memberRepository.existsByUsername(username);
 
     if (isExist) {
-      return;
+      return false;
     }
 
     MemberEntity member =
@@ -36,6 +36,7 @@ public class JoinService {
             .nickname(joinRequestDto.getNickname())
             .build();
 
-    userRepository.save(member);
+    memberRepository.save(member);
+    return true;
   }
 }

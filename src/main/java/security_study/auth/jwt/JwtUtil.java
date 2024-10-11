@@ -1,6 +1,6 @@
 package security_study.auth.jwt;
 
-import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -13,30 +13,33 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtUtil {
 
-  private SecretKey secretKey;
-  private final String CATEGORY = "category";
-  private final String USERNAME = "username";
-  private final String UNIQUE_ID = "unique_id";
-  private final String ROLE = "role";
+  private static SecretKey secretKey;
+  private static final String CATEGORY = "category";
+  private static final String USERNAME = "username";
+  private static final String UNIQUE_ID = "unique_id";
+  private static final String ROLE = "role";
 
-  public JwtUtil(@Value("${security.jwt.secret}") String secret) {
-
+  private JwtUtil(@Value("${security.jwt.secret}") String secret) {
     this.secretKey =
         new SecretKeySpec(
             secret.getBytes(StandardCharsets.UTF_8), Jwts.SIG.HS256.key().build().getAlgorithm());
   }
 
-  public String getUsername(String token) {
+  public static void isValid(String token) throws JwtException {
+    Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
+  }
+
+  public static String getUsername(String token) throws JwtException {
 
     return Jwts.parser()
         .verifyWith(secretKey)
         .build()
-        .parseSignedClaims(token)
+        .parseSignedClaims(token) // 내부적으로 expired 체크함.
         .getPayload()
         .get(USERNAME, String.class);
   }
 
-  public String getRole(String token) {
+  public static String getRole(String token) throws JwtException {
 
     return Jwts.parser()
         .verifyWith(secretKey)
@@ -46,18 +49,7 @@ public class JwtUtil {
         .get(ROLE, String.class);
   }
 
-  public Boolean isExpired(String token) throws ExpiredJwtException {
-
-    return Jwts.parser()
-        .verifyWith(secretKey)
-        .build()
-        .parseSignedClaims(token)
-        .getPayload()
-        .getExpiration()
-        .before(new Date());
-  }
-
-  public String getCategory(String token) {
+  public static String getCategory(String token) throws JwtException {
 
     return Jwts.parser()
         .verifyWith(secretKey)
@@ -67,16 +59,7 @@ public class JwtUtil {
         .get(CATEGORY, String.class);
   }
 
-  public Date getExpiration(String token) {
-    return Jwts.parser()
-        .verifyWith(secretKey)
-        .build()
-        .parseSignedClaims(token)
-        .getPayload()
-        .getExpiration();
-  }
-
-  public String createJwt(String category, String username, String role, Long expiredMs) {
+  public static String createJwt(String category, String username, String role, Long expiredMs) {
     Long issuedMs = System.currentTimeMillis();
     String uniqueId = UUID.randomUUID().toString();
     return Jwts.builder()
