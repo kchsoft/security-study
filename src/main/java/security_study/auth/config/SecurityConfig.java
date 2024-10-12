@@ -20,8 +20,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 import security_study.auth.jwt.JwtAuthenticationFilter;
-import security_study.auth.jwt.JwtValidationFilter;
 import security_study.auth.jwt.JwtLogoutFilter;
+import security_study.auth.jwt.JwtValidationFilter;
+import security_study.auth.repository.BlacklistCacheRepository;
 import security_study.auth.repository.RefreshTokenCacheRepository;
 
 // jwt - http header O
@@ -36,6 +37,7 @@ public class SecurityConfig {
   private final AuthenticationConfiguration authenticationConfiguration;
   private final ObjectMapper objectMapper;
   private final RefreshTokenCacheRepository refreshTokenCacheRepository;
+  private final BlacklistCacheRepository blacklistCacheRepository;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -71,7 +73,8 @@ public class SecurityConfig {
         UsernamePasswordAuthenticationFilter
             .class); // 로그인을 위한 필터이다. 기본적으로 /login 요청이 들어오면 필터가 시작된다.
     http.addFilterAt(
-        new JwtLogoutFilter(refreshTokenCacheRepository), LogoutFilter.class);
+        new JwtLogoutFilter(refreshTokenCacheRepository, blacklistCacheRepository),
+        LogoutFilter.class);
     return http.build();
   }
 

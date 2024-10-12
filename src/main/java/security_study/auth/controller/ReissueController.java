@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import security_study.auth.dto.response.LoginResponseDto;
 import security_study.auth.jwt.JwtUtil;
+import security_study.auth.repository.BlacklistCacheRepository;
 import security_study.auth.repository.RefreshTokenCacheRepository;
 import security_study.auth.service.CookieUtil;
 import security_study.auth.service.ReissueService;
@@ -32,6 +33,7 @@ public class ReissueController {
 
   private final ReissueService reissueService;
   private final RefreshTokenCacheRepository refreshTokenCacheRepository;
+  private final BlacklistCacheRepository blacklistCacheRepository;
 
   @PostMapping("/reissue")
   public ResponseEntity<?> reissue(HttpServletRequest request, HttpServletResponse response) {
@@ -53,7 +55,7 @@ public class ReissueController {
     }
     log.info("token is not null");
 
-    try{
+    try {
       JwtUtil.isValid(refreshToken); // jjwt 라이브러리가 제공하는 검증 시행
     } catch (ExpiredJwtException expired) {
       log.error(expired.getMessage());
@@ -73,14 +75,21 @@ public class ReissueController {
     }
     log.info("token is refresh token");
 
-
-    // 3. refresh 이 저장되어 있는지 확인
+    // 3. 동일한 refresh가 저장되어 있는지 확인
     String username = JwtUtil.getUsername(refreshToken);
-    if (!refreshTokenCacheRepository.isExist(username)) {
+    String cacheRefresh = refreshTokenCacheRepository.get(username);
+    if (!refreshToken.equals(cacheRefresh)) {
       log.error("refresh token is not stored");
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("서비스에 없는 refresh token입니다.");
     }
     log.info("cache have refresh token");
+
+    // 4. blacklist에 있는 refresh인지 확인
+    if (blacklistCacheRepository.isExist(refreshToken)) {
+      log.error("blacklist has this refresh token");
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("사용할 수 없는 refresh token 입니다.");
+    }
+    blacklistCacheRepository.save(refreshToken, username);
 
     String role = JwtUtil.getRole(refreshToken);
     String newAccessToken =

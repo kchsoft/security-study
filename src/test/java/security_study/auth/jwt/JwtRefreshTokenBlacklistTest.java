@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static security_study.auth.config.MemberInfoConstant.NICKNAME_TEST;
 import static security_study.auth.config.MemberInfoConstant.RAW_PASSWORD_TEST;
 import static security_study.auth.config.MemberInfoConstant.USERNAME_TEST;
 import static security_study.auth.constant.AuthoritiesRoleName.MEMBER;
@@ -25,24 +24,24 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.TestExecutionListeners.MergeMode;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import security_study.auth.domain.CustomUserDetails;
 import security_study.auth.dto.request.LoginRequestDto;
 import security_study.auth.listener.ContextCreationListener;
-import security_study.auth.repository.MemberRepository;
+import security_study.auth.repository.BlacklistCacheRepository;
 import security_study.auth.repository.RefreshTokenCacheRepository;
 import security_study.auth.service.CookieUtil;
 
@@ -52,46 +51,49 @@ import security_study.auth.service.CookieUtil;
 @TestExecutionListeners(
     listeners = ContextCreationListener.class,
     mergeMode = MergeMode.MERGE_WITH_DEFAULTS)
-@TestPropertySource(properties = "refresh.token.ttl=PT1S") // redis의 duration을 1초로 지정함.
-public class JwtRefreshTokenCacheTest {
+public class JwtRefreshTokenBlacklistTest {
 
-  @Autowired private ObjectMapper objectMapper;
-  @Autowired private MockMvc mockMvc;
-  @Autowired private RefreshTokenCacheRepository refreshTokenCacheRepository;
+  @Autowired MockMvc mockMvc;
+  @Autowired BlacklistCacheRepository blacklistCacheRepository;
+  @Autowired RefreshTokenCacheRepository refreshTokenCacheRepository;
 
-  @MockBean private AuthenticationManager mockAuthenticationManager;
+  @Autowired
+  @Qualifier("blacklistRedisTemplate")
+  RedisTemplate<String, String> blacklistRedisTemplate;
+
+  @Autowired ObjectMapper objectMapper;
+
+  @MockBean AuthenticationManager mockAuthenticationManager;
 
   @Mock UserDetails dbMemberDetails;
-
-  private final String CACHE_PREFIX = "CACHE_";
-  private final String CACHE_USERNAME = CACHE_PREFIX + USERNAME_TEST;
-  private final String CACHE_PASSWORD = CACHE_PREFIX + RAW_PASSWORD_TEST;
 
   @BeforeEach
   void setup() {
     dbMemberDetails =
         CustomUserDetails.builder()
-            .username(CACHE_USERNAME)
-            .password(CACHE_PASSWORD)
+            .username(USERNAME_TEST)
+            .password(RAW_PASSWORD_TEST)
             .role(ROLE_ + MEMBER)
             .build();
 
     Authentication authentication = mock(Authentication.class);
     when(authentication.getPrincipal()).thenReturn(dbMemberDetails);
+    when(authentication.getAuthorities()).thenAnswer(answer -> dbMemberDetails.getAuthorities());
 
     when(mockAuthenticationManager.authenticate(any())).thenReturn(authentication);
   }
 
   @AfterEach
   void cleanup() {
-    refreshTokenCacheRepository.delete(CACHE_USERNAME);
+    blacklistRedisTemplate.delete(blacklistRedisTemplate.keys("*"));
+    refreshTokenCacheRepository.delete(USERNAME_TEST);
   }
 
   @Test
-  @DisplayName("로그인 -> 발급된 RT는 Cache에 저장")
-  void loginSaveRtToCache() throws Exception {
+  @DisplayName("로그인 -> 발급된 RT는 Blacklist에 없다.")
+  void newRefreshTokenNotExistInBlackList() throws Exception {
     LoginRequestDto loginRequest =
-        LoginRequestDto.builder().username(CACHE_USERNAME).password(CACHE_PASSWORD).build();
+        LoginRequestDto.builder().username(USERNAME_TEST).password(RAW_PASSWORD_TEST).build();
     MvcResult result =
         mockMvc
             .perform(
@@ -102,32 +104,21 @@ public class JwtRefreshTokenCacheTest {
             .andExpect(status().isOk())
             .andDo(print())
             .andReturn();
-
     MockHttpServletResponse response = result.getResponse();
     Cookie cookie = response.getCookie(REFRESH_TOKEN);
     assertThat(cookie).isNotNull();
     String refreshToken = cookie.getValue();
     assertThat(refreshToken).isNotNull().isNotBlank();
-    assertThat(JwtUtil.getCategory(refreshToken))
-        .as("Refresh Token이 아닙니다.")
-        .isEqualTo(CATEGORY_REFRESH);
-    assertThat(JwtUtil.getUsername(refreshToken))
-        .as("입력한 유저 ID와 JWT 클레임의 유저 ID가 서로 다릅니다.")
-        .isEqualTo(CACHE_USERNAME);
-    assertThat(JwtUtil.getRole(refreshToken))
-        .as("사용자의 ROLE과 JWT 클레임의 ROLE이 서로 다릅니다.")
-        .isEqualTo(ROLE_ + MEMBER);
-    assertThat(cookie.isHttpOnly()).as("쿠키에 HttpOnly가 True로 설정되지 않았습니다.").isTrue();
-    assertThat(refreshToken).isEqualTo(refreshTokenCacheRepository.get(CACHE_USERNAME));
+    assertThat(blacklistCacheRepository.isExist(refreshToken)).isFalse();
   }
 
   @Test
-  @DisplayName("RT -> reissue uri 접근 -> Cache에 기존 RT 제거 및 새로운 RT 저장")
-  void reissueRefreshToken() throws Exception {
+  @DisplayName("RT -> reissue uri 접근 -> 기존 RT BL에 있고, 새로운 RT BL에 없음.")
+  void oldRefreshTokenExistInBlacklist() throws Exception {
     String beforeRefresh =
         JwtUtil.createJwt(
-            CATEGORY_REFRESH, CACHE_USERNAME, ROLE_ + MEMBER, REFRESH_TOKEN_EXPIRATION_TIME);
-    refreshTokenCacheRepository.save(CACHE_USERNAME, beforeRefresh);
+            CATEGORY_REFRESH, USERNAME_TEST, ROLE_ + MEMBER, REFRESH_TOKEN_EXPIRATION_TIME);
+    refreshTokenCacheRepository.save(USERNAME_TEST, beforeRefresh);
 
     MvcResult mvcResult =
         mockMvc
@@ -135,37 +126,52 @@ public class JwtRefreshTokenCacheTest {
             .andExpect(status().isOk())
             .andDo(print())
             .andReturn();
-
     MockHttpServletResponse response = mvcResult.getResponse();
+
+    // old refresh token validation
+    assertThat(blacklistCacheRepository.isExist(beforeRefresh))
+        .as("old RT가 Blacklist에 없습니다.")
+        .isTrue();
+
+    // new refresh token validation
     Cookie cookie = response.getCookie(REFRESH_TOKEN);
     assertThat(cookie).as("쿠키에 RT Key가 없습니다.").isNotNull();
     assertThat(cookie.isHttpOnly()).as("쿠키에 HttpOnly가 True로 설정되지 않았습니다.").isTrue();
     String afterRefresh = cookie.getValue();
-    assertThat(afterRefresh).as("쿠키에 새로운 RT 값이 없습니다.").isNotNull().isNotBlank();
-    assertThat(refreshTokenCacheRepository.get(CACHE_USERNAME))
-        .as("새로운 RT와 캐쉬의 RT가 서로 다릅니다.")
-        .isEqualTo(afterRefresh);
-    assertThat(afterRefresh).as("요청 쿠키 RT와 새로운 RT가 똑같습니다.").isNotEqualTo(beforeRefresh);
+    assertThat(afterRefresh).as("RT 값이 null 입니다.").isNotNull().as("RT 값이 \"\" 입니다.").isNotBlank();
+    assertThat(blacklistCacheRepository.isExist(afterRefresh))
+        .as("new RT가 Blacklist에 있습니다.")
+        .isFalse();
   }
 
-  @Test
-  @DisplayName("RT가 만료됨 -> Cache에서 RT 삭제")
-  void cacheDelExpiredRefreshToken() throws Exception {
-    long expiredTime = 1000L;
-    String expiredRefreshToken =
-        JwtUtil.createJwt(CATEGORY_REFRESH, CACHE_USERNAME, ROLE_ + MEMBER, expiredTime);
-    refreshTokenCacheRepository.save(CACHE_USERNAME, expiredRefreshToken);
+  @Test // refresh cache에 토큰이 있다고 가정함.
+  @DisplayName("BL에 있는 RT -> reissue uri 접근 -> cache,blacklist 변화 없음")
+  void BlacklistRefreshTokenDoNotMakeNewJwt() throws Exception {
+    String blacklistRefresh =
+        JwtUtil.createJwt(
+            CATEGORY_REFRESH, USERNAME_TEST, ROLE_ + MEMBER, REFRESH_TOKEN_EXPIRATION_TIME);
+    String cacheRefresh =
+        JwtUtil.createJwt(
+            CATEGORY_REFRESH, USERNAME_TEST, ROLE_ + MEMBER, REFRESH_TOKEN_EXPIRATION_TIME);
 
-    Thread.sleep(1100L);
+    blacklistCacheRepository.save(blacklistRefresh, USERNAME_TEST);
+    refreshTokenCacheRepository.save(USERNAME_TEST, cacheRefresh);
 
     MvcResult mvcResult =
         mockMvc
-            .perform(post("/reissue").cookie(CookieUtil.create(REFRESH_TOKEN, expiredRefreshToken)))
+            .perform(post("/reissue").cookie(CookieUtil.create(REFRESH_TOKEN, blacklistRefresh)))
+            .andExpect(status().isBadRequest())
             .andDo(print())
-            .andExpect(status().isFound())
             .andReturn();
-    assertThat(refreshTokenCacheRepository.isExist(CACHE_USERNAME))
-        .as("cache에 RT가 남아있습니다.")
-        .isFalse();
+
+    // blacklist refresh token validation
+    assertThat(blacklistCacheRepository.isExist(blacklistRefresh))
+        .as("BL RT가 Blacklist에 없습니다.")
+        .isTrue();
+
+    // cache refresh token validation
+    assertThat(refreshTokenCacheRepository.isExist(USERNAME_TEST))
+        .as("cache RT가 Cache에 없습니다.")
+        .isTrue();
   }
 }

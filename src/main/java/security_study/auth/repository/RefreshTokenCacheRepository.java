@@ -16,7 +16,7 @@ public class RefreshTokenCacheRepository {
 
   public RefreshTokenCacheRepository(
       @Qualifier("refreshTokenRedisTemplate") RedisTemplate<String, String> redisTemplate,
-      @Value("${refresh.token.ttl:P7D}") Duration RT_CACHE_TTL) {
+      @Value("${refresh.token.ttl:P7D}") Duration RT_CACHE_TTL) { // yaml, properties  refresh.token.ttl 값이 없어도 기본값 P7D(7일) 적용
     this.redisTemplate = redisTemplate;
     this.RT_CACHE_TTL = RT_CACHE_TTL;
   }
@@ -42,6 +42,6 @@ public class RefreshTokenCacheRepository {
   }
 
   private String getKey(String username) {
-    return "REFRESH:" + username; // key 구설할 때 prefix 붙이는게 좋음. 구별 위해서
+    return "REFRESH:" + username; // key 구성할 때 prefix 붙이는게 좋음. 구별 위해서
   }
 }

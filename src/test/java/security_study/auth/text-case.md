@@ -36,6 +36,7 @@
 - [x] 만료된 RT -> reissue uri 접근 -> Cache에서 만료된 RT 제거
 
 ### RefreshToken - BlackList(Redis)
-- [ ] 로그인 -> 발급된 RT는 BlcakList에 없음
-- [ ] RT -> reissue uri 접근 -> 기존 RT는 BlackList에 있고, 새로운 RT는 BlackList에 없음.
-- [ ] 블랙리스트RT -> reissue uri 접근 -> 토큰 재발급 X
+> 현재 구현상, Blacklist는 필요 없을 수 도 있다. Refresh 1개만 Rotate 하기 때문이다.
+- [x] 로그인 -> 발급된 RT는 BlcakList에 없음
+- [x] RT -> reissue uri 접근 -> 기존 RT는 BlackList에 있고, 새로운 RT는 BlackList에 없음.
+- [x] 블랙리스트RT -> reissue uri 접근 -> cache,blacklist 변화 없음

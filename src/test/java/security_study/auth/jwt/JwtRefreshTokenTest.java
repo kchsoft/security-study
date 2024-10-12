@@ -70,7 +70,6 @@ public class JwtRefreshTokenTest {
   private String RT_PREFIX = "RT_";
   private String RT_USERNAME = RT_PREFIX + USERNAME_TEST;
   private String RT_PASSWORD = RT_PREFIX + RAW_PASSWORD_TEST;
-  private String RT_NICKNAME = RT_PREFIX + NICKNAME_TEST;
   private UserDetails dbMemberDetails;
 
   @BeforeEach
@@ -85,7 +84,6 @@ public class JwtRefreshTokenTest {
     Authentication mockAuthentication = mock(Authentication.class);
     when(mockAuthenticationManager.authenticate(any())).thenReturn(mockAuthentication);
     when(mockAuthentication.getPrincipal()).thenAnswer(param -> dbMemberDetails);
-    when(mockAuthentication.getAuthorities()).thenAnswer(param -> dbMemberDetails.getAuthorities());
 
     when(refreshTokenCacheRepository.isExist(anyString())).thenReturn(true);
 

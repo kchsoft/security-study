@@ -30,7 +30,16 @@ public class RedisConfiguration {
     redisTemplate.setConnectionFactory(redisConnectionFactory); // redis 서버의 정보를 입력함.
     redisTemplate.setKeySerializer(new StringRedisSerializer());
     redisTemplate.setValueSerializer(
-        new Jackson2JsonRedisSerializer<String>(String.class));
+        new Jackson2JsonRedisSerializer<String>(String.class)); // json 기반 직렬화 적용
+    return redisTemplate;
+  }
+
+  @Bean
+  public RedisTemplate<String, String> blacklistRedisTemplate(RedisConnectionFactory redisConnectionFactory) {
+    RedisTemplate<String, String> redisTemplate = new RedisTemplate<>();
+    redisTemplate.setConnectionFactory(redisConnectionFactory); // redis 서버의 정보를 입력함.
+    redisTemplate.setKeySerializer(new StringRedisSerializer());
+    redisTemplate.setValueSerializer(new StringRedisSerializer());
     return redisTemplate;
   }
 

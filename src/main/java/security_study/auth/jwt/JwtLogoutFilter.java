@@ -21,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.GenericFilterBean;
+import security_study.auth.repository.BlacklistCacheRepository;
 import security_study.auth.repository.RefreshTokenCacheRepository;
 import security_study.auth.service.CookieUtil;
 
@@ -29,6 +30,7 @@ import security_study.auth.service.CookieUtil;
 public class JwtLogoutFilter extends GenericFilterBean {
 
   private final RefreshTokenCacheRepository refreshTokenCacheRepository;
+  private final BlacklistCacheRepository blacklistCacheRepository;
 
   @Override
   public void doFilter(
@@ -71,7 +73,7 @@ public class JwtLogoutFilter extends GenericFilterBean {
     }
 
     // jjwt 라이브러리가 제공하는 토큰 검증 시행
-    try{
+    try {
       JwtUtil.isValid(refreshToken);
     } catch (JwtException error) {
       log.error(error.getMessage());
@@ -100,6 +102,7 @@ public class JwtLogoutFilter extends GenericFilterBean {
     // Refresh 토큰 캐쉬에서 제거
     refreshTokenCacheRepository.delete(username);
     // blackList에 Refresh토큰 추가
+    blacklistCacheRepository.save(refreshToken, username);
 
     // Refresh 토큰 Cookie 값 0
     Cookie invalidate = CookieUtil.invalidate(REFRESH_TOKEN, null);
