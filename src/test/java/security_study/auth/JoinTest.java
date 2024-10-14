@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -39,16 +40,13 @@ public class JoinTest {
   @Autowired private ObjectMapper objectMapper;
   @Autowired private MemberRepository memberRepository;
 
-
   private String JOIN_PREFIX = "JOIN_";
   private String JOIN_USERNAME = JOIN_PREFIX + USERNAME_TEST;
   private String JOIN_RAW_PASSWORD = JOIN_PREFIX + RAW_PASSWORD_TEST;
   private String JOIN_NICKNAME = JOIN_PREFIX + NICKNAME_TEST;
 
   @AfterEach
-  void cleanUp() {
-
-  }
+  void cleanUp() {}
 
   @Test
   @DisplayName("anony -> post /join")
@@ -59,7 +57,7 @@ public class JoinTest {
                 .username(JOIN_USERNAME)
                 .password(JOIN_RAW_PASSWORD)
                 .nickname(JOIN_NICKNAME)
-                .role(ROLE_+MEMBER)
+                .role(ROLE_ + MEMBER)
                 .build());
     mockMvc
         .perform(post("/join").contentType(MediaType.APPLICATION_JSON).content(joinInfoJson))

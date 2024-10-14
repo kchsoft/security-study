@@ -24,8 +24,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,9 +41,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import security_study.auth.domain.CustomUserDetails;
 import security_study.auth.dto.request.LoginRequestDto;
 import security_study.auth.dto.response.LoginResponseDto;
-import security_study.auth.jwt.JwtUtil;
 import security_study.auth.listener.ContextCreationListener;
-import security_study.auth.repository.MemberRepository;
 import security_study.auth.repository.RefreshTokenCacheRepository;
 
 @SpringBootTest
@@ -84,10 +80,11 @@ public class JwtAccessTokenTest {
     dbMemberDetails =
         CustomUserDetails.builder()
             .username(AT_USERNAME)
-            .password(AT_PASSWORD) // AuthenticationManager 객체를 mock 할 것이기 때문에, 테스트에서 RAW와 ENCODE 패스워드에 대한 비교가 없다.
+            .password(
+                AT_PASSWORD) // AuthenticationManager 객체를 mock 할 것이기 때문에, 테스트에서 RAW와 ENCODE 패스워드에 대한
+            // 비교가 없다.
             .role(ROLE_ + MEMBER)
             .build();
-
 
     Authentication mockAuthentication = mock(Authentication.class);
 

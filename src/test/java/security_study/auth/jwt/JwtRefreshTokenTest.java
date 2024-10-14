@@ -9,7 +9,6 @@ import static org.springframework.http.HttpHeaders.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static security_study.auth.config.MemberInfoConstant.NICKNAME_TEST;
 import static security_study.auth.config.MemberInfoConstant.RAW_PASSWORD_TEST;
 import static security_study.auth.config.MemberInfoConstant.USERNAME_TEST;
 import static security_study.auth.constant.AuthoritiesRoleName.MEMBER;
@@ -85,13 +84,11 @@ public class JwtRefreshTokenTest {
     when(mockAuthenticationManager.authenticate(any())).thenReturn(mockAuthentication);
     when(mockAuthentication.getPrincipal()).thenAnswer(param -> dbMemberDetails);
 
-    when(refreshTokenCacheRepository.isExist(anyString())).thenReturn(true);
-
+    when(refreshTokenCacheRepository.equalsFrom(anyString(), anyString())).thenReturn(true);
   }
 
   @AfterEach
-  void cleanup() {
-  }
+  void cleanup() {}
 
   @Test
   @DisplayName("로그인 -> Refresh Token 발급 성공")
@@ -177,7 +174,7 @@ public class JwtRefreshTokenTest {
         JwtUtil.createJwt(CATEGORY_REFRESH, RT_USERNAME, ROLE_ + MEMBER, -1000L);
     MvcResult mvcResult =
         mockMvc
-            .perform(post("/reissue").cookie(CookieUtil.create(REFRESH_TOKEN,expiredRefreshToken)))
+            .perform(post("/reissue").cookie(CookieUtil.create(REFRESH_TOKEN, expiredRefreshToken)))
             .andDo(print())
             .andExpect(status().isFound())
             .andReturn();

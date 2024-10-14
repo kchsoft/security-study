@@ -16,7 +16,8 @@ public class RefreshTokenCacheRepository {
 
   public RefreshTokenCacheRepository(
       @Qualifier("refreshTokenRedisTemplate") RedisTemplate<String, String> redisTemplate,
-      @Value("${refresh.token.ttl:P7D}") Duration RT_CACHE_TTL) { // yaml, properties  refresh.token.ttl 값이 없어도 기본값 P7D(7일) 적용
+      @Value("${refresh.token.ttl:P7D}")
+          Duration RT_CACHE_TTL) { // yaml, properties  refresh.token.ttl 값이 없어도 기본값 P7D(7일) 적용
     this.redisTemplate = redisTemplate;
     this.RT_CACHE_TTL = RT_CACHE_TTL;
   }
@@ -36,9 +37,13 @@ public class RefreshTokenCacheRepository {
     return Boolean.TRUE.equals(redisTemplate.delete(key));
   }
 
-  public boolean isExist(String username) {
+  public boolean equalsFrom(String username, String token) {
     String key = getKey(username);
-    return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    if (redisTemplate.hasKey(key) == true) {
+      String cacheToken = this.get(username);
+      return cacheToken.equals(token);
+    }
+    return false;
   }
 
   private String getKey(String username) {

@@ -77,8 +77,7 @@ public class ReissueController {
 
     // 3. 동일한 refresh가 저장되어 있는지 확인
     String username = JwtUtil.getUsername(refreshToken);
-    String cacheRefresh = refreshTokenCacheRepository.get(username);
-    if (!refreshToken.equals(cacheRefresh)) {
+    if (!refreshTokenCacheRepository.equalsFrom(username,refreshToken)) {
       log.error("refresh token is not stored");
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("서비스에 없는 refresh token입니다.");
     }

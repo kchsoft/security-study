@@ -170,7 +170,7 @@ public class JwtRefreshTokenBlacklistTest {
         .isTrue();
 
     // cache refresh token validation
-    assertThat(refreshTokenCacheRepository.isExist(USERNAME_TEST))
+    assertThat(refreshTokenCacheRepository.equalsFrom(USERNAME_TEST,cacheRefresh))
         .as("cache RT가 Cache에 없습니다.")
         .isTrue();
   }

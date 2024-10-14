@@ -3,8 +3,6 @@ package security_study.auth.jwt;
 import static security_study.auth.constant.JwtConstant.CATEGORY_REFRESH;
 import static security_study.auth.constant.JwtConstant.REFRESH_TOKEN;
 
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.Jwt;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,9 +15,6 @@ import java.io.IOException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.GenericFilterBean;
 import security_study.auth.repository.BlacklistCacheRepository;
 import security_study.auth.repository.RefreshTokenCacheRepository;
@@ -91,8 +86,8 @@ public class JwtLogoutFilter extends GenericFilterBean {
 
     // DB에 RT가 저장되어 있는지 확인
     String username = JwtUtil.getUsername(refreshToken);
-    Boolean isExist = refreshTokenCacheRepository.isExist(username);
-    if (!isExist) {
+    Boolean isEquals = refreshTokenCacheRepository.equalsFrom(username,refreshToken);
+    if (!isEquals) {
       response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
       response.getWriter().write("서비스에 등록되어 있지 않은 토큰 입니다.");
       return;

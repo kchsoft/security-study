@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static security_study.auth.config.MemberInfoConstant.NICKNAME_TEST;
 import static security_study.auth.config.MemberInfoConstant.RAW_PASSWORD_TEST;
 import static security_study.auth.config.MemberInfoConstant.USERNAME_TEST;
 import static security_study.auth.constant.AuthoritiesRoleName.MEMBER;
@@ -23,6 +22,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -33,16 +33,15 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.TestExecutionListeners.MergeMode;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import security_study.auth.domain.CustomUserDetails;
 import security_study.auth.dto.request.LoginRequestDto;
 import security_study.auth.listener.ContextCreationListener;
-import security_study.auth.repository.MemberRepository;
 import security_study.auth.repository.RefreshTokenCacheRepository;
 import security_study.auth.service.CookieUtil;
 
@@ -164,7 +163,7 @@ public class JwtRefreshTokenCacheTest {
             .andDo(print())
             .andExpect(status().isFound())
             .andReturn();
-    assertThat(refreshTokenCacheRepository.isExist(CACHE_USERNAME))
+    assertThat(refreshTokenCacheRepository.equalsFrom(CACHE_USERNAME,expiredRefreshToken))
         .as("cache에 RT가 남아있습니다.")
         .isFalse();
   }
