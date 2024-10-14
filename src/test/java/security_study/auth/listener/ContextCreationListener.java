@@ -44,7 +44,8 @@ public class ContextCreationListener implements TestExecutionListener {
     log.info("{} Local Test Start Time = {}", testContext.getTestClass().getName(), localStartTime);
     log.info("Context Package Id = {}", testContext.getApplicationContext().getId());
     log.info("Spring Context Hashcode = {}", testContext.getApplicationContext().hashCode());
-    log.info("Used Spring Context Size  = {}", contextSet.size());
+    log.info("Test Clas Name  = {} ", testContext.getTestClass().getName());
+    log.info("Used Spring Context Size  = {} ", contextSet.size());
 
     redisTemplate =
         testContext

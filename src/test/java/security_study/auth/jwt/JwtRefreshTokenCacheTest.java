@@ -23,11 +23,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -38,6 +36,7 @@ import org.springframework.test.context.TestExecutionListeners.MergeMode;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import security_study.auth.config.AuthenticationManagerTestConfiguration;
 import security_study.auth.domain.CustomUserDetails;
 import security_study.auth.dto.request.LoginRequestDto;
 import security_study.auth.listener.ContextCreationListener;
@@ -51,17 +50,14 @@ import security_study.auth.service.CookieUtil;
     listeners = ContextCreationListener.class,
     mergeMode = MergeMode.MERGE_WITH_DEFAULTS)
 @TestPropertySource(properties = "refresh.token.ttl=PT1S") // redis의 duration을 1초로 지정함.
+@Import(AuthenticationManagerTestConfiguration.class)
 public class JwtRefreshTokenCacheTest {
 
   @Autowired private ObjectMapper objectMapper;
   @Autowired private MockMvc mockMvc;
   @Autowired private RefreshTokenCacheRepository refreshTokenCacheRepository;
 
-  @Autowired
-  @Qualifier("blacklistRedisTemplate")
-  RedisTemplate<String, String> blacklistRedisTemplate;
-
-  @MockBean private AuthenticationManager mockAuthenticationManager;
+  @Autowired private AuthenticationManager mockAuthenticationManager;
 
   @Mock UserDetails dbMemberDetails;
 

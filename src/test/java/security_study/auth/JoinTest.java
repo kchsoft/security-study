@@ -1,8 +1,6 @@
 package security_study.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,14 +14,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.TestExecutionListeners.MergeMode;
 import org.springframework.test.web.servlet.MockMvc;
+import security_study.auth.config.AuthenticationManagerTestConfiguration;
 import security_study.auth.dto.request.JoinRequestDto;
 import security_study.auth.entity.MemberEntity;
 import security_study.auth.listener.ContextCreationListener;
@@ -34,6 +33,7 @@ import security_study.auth.repository.MemberRepository;
 @TestExecutionListeners(
     listeners = ContextCreationListener.class,
     mergeMode = MergeMode.MERGE_WITH_DEFAULTS)
+@Import(AuthenticationManagerTestConfiguration.class)
 public class JoinTest {
 
   @Autowired private MockMvc mockMvc;

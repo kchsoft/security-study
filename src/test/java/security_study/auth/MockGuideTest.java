@@ -12,9 +12,18 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestExecutionListeners;
+import org.springframework.test.context.TestExecutionListeners.MergeMode;
+import security_study.auth.config.AuthenticationManagerTestConfiguration;
+import security_study.auth.listener.ContextCreationListener;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestExecutionListeners(
+    listeners = ContextCreationListener.class,
+    mergeMode = MergeMode.MERGE_WITH_DEFAULTS)
+@Import(AuthenticationManagerTestConfiguration.class)
 public class MockGuideTest {
 
   /*

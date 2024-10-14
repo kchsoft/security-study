@@ -48,10 +48,10 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 
   /*
 
-   * login을 시도하면 해당 필터 및 메서드가 실행된다.
-   * username, password를 꺼내, 인증 token (username, password 포함)을 만둔 뒤에,
-   * auth manager에게 token을 전달하며 인증을 시도한다.
-   * */
+  * login을 시도하면 해당 필터 및 메서드가 실행된다.
+  * username, password를 꺼내, 인증 token (username, password 포함)을 만둔 뒤에,
+  * auth manager에게 token을 전달하며 인증을 시도한다.
+  * */
   @Override
   public Authentication attemptAuthentication(
       HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
