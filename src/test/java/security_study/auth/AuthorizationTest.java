@@ -29,7 +29,6 @@ import security_study.auth.listener.ContextCreationListener;
 public class AuthorizationTest {
 
   @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
 
   /*
    * @WithMockUser(roles = "MEMBER") -> MEMBER 권한을 가지고 test 시작, 앞에 'ROLE_' 을 붙이면 안된다.

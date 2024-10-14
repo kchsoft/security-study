@@ -65,50 +65,12 @@ public class JwtAccessTokenTest {
    * */
   @Autowired private AuthenticationManager mockAuthenticationManager;
 
-  private String AT_PREFIX = "AT_";
-  private String AT_USERNAME = AT_PREFIX + USERNAME_TEST;
-  private String AT_PASSWORD = AT_PREFIX + RAW_PASSWORD_TEST;
-
-  private UserDetails dbMemberDetails;
-
-  @BeforeEach
-  void setUp() {
-
-    dbMemberDetails =
-        CustomUserDetails.builder()
-            .username(AT_USERNAME)
-            .password(
-                AT_PASSWORD) // AuthenticationManager 객체를 mock 할 것이기 때문에, 테스트에서 RAW와 ENCODE 패스워드에 대한
-            // 비교가 없다.
-            .role(ROLE_ + MEMBER)
-            .build();
-
-    Authentication mockAuthentication = mock(Authentication.class);
-
-    // when() -> 모의 객체의 특정 메서드 호출시, 메서드 동작 방법을 정의(프로그래밍) 할 때 사용한다.
-    // thenReturn() -> 메서드 호출 이후에 반환할 값을 설정한다. / 고정된 값을 반환한다. ( when() 후에 연결되어 사용 )
-    // ex) getPrincipal() 메서드가 호출되면, 사전에 정의한 dbMemberDetails 객체를 반환하도록 메서드를 정의한다.
-    when(mockAuthenticationManager.authenticate(any())).thenReturn(mockAuthentication);
-    when(mockAuthentication.getPrincipal())
-        .thenAnswer(
-            param -> {
-              log.info("execute mock method = {}", param.getMethod());
-              return dbMemberDetails;
-            });
-
-    // thenAnswer() -> 메서드 호출(when) 시점의 상태나 입력에 따라 다른 동작을 할 수 있다. + 제네릭 타입 관련 문제 해결
-    // thenAnswer()를 사용해서 when()에서 호출하는 메서드의 내부 구현체를 정의한다고 생각하면 된다.
-    // ex) getAuthorities()를 호출하면, 사전에 정의한 dbMemberDetails의 authorities를 반환하라!
-    // 사용 이유 : 메서드 인자에 기반한 응답 생성, 호출 횟수에 따른 다른 응답 제공, 복잡한 로직 시뮬, 예외 발생 조건 테스트
-    when(mockAuthentication.getAuthorities()).thenAnswer(param -> dbMemberDetails.getAuthorities());
-  }
-
   @Test
   @DisplayName("로그인 -> Access Token 생성")
   void loginCreateAccessToken() throws Exception {
 
     LoginRequestDto loginRequest =
-        LoginRequestDto.builder().username(AT_USERNAME).password(AT_PASSWORD).build();
+        LoginRequestDto.builder().username(USERNAME_TEST).password(RAW_PASSWORD_TEST).build();
     MvcResult result =
         mockMvc
             .perform(
@@ -127,7 +89,7 @@ public class JwtAccessTokenTest {
     assertThat(responseDto.getAccessToken()).isNotNull();
     String accessToken = responseDto.getAccessToken();
 
-    assertThat(JwtUtil.getUsername(accessToken)).isEqualTo(AT_USERNAME);
+    assertThat(JwtUtil.getUsername(accessToken)).isEqualTo(USERNAME_TEST);
     assertThat(JwtUtil.getRole(accessToken)).isEqualTo(ROLE_ + MEMBER);
   }
 
@@ -136,7 +98,7 @@ public class JwtAccessTokenTest {
   void accessTokenToPrivateUri() throws Exception {
     String accessToken =
         JwtUtil.createJwt(
-            CATEGORY_ACCESS, AT_USERNAME, ROLE_ + MEMBER, ACCESS_TOKEN_EXPIRATION_TIME);
+            CATEGORY_ACCESS, USERNAME_TEST, ROLE_ + MEMBER, ACCESS_TOKEN_EXPIRATION_TIME);
     mockMvc
         .perform(get("/member").header(AUTHORIZATION, BEARER_PREFIX + accessToken))
         .andExpect(status().isOk());
@@ -145,7 +107,7 @@ public class JwtAccessTokenTest {
   @Test
   @DisplayName("만료된 AT -> private uri 접근 실패")
   void expiredAccessTokenToPrivateUri() throws Exception {
-    String accessToken = JwtUtil.createJwt(CATEGORY_ACCESS, AT_USERNAME, ROLE_ + MEMBER, -1000L);
+    String accessToken = JwtUtil.createJwt(CATEGORY_ACCESS, USERNAME_TEST, ROLE_ + MEMBER, -1000L);
     MvcResult mvcResult =
         mockMvc
             .perform(get("/member").header(AUTHORIZATION, BEARER_PREFIX + accessToken))

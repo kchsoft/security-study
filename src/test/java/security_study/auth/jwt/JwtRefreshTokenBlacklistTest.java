@@ -65,24 +65,6 @@ public class JwtRefreshTokenBlacklistTest {
 
   @Autowired AuthenticationManager mockAuthenticationManager;
 
-  UserDetails dbMemberDetails;
-
-  @BeforeEach
-  void setup() {
-    dbMemberDetails =
-        CustomUserDetails.builder()
-            .username(USERNAME_TEST)
-            .password(RAW_PASSWORD_TEST)
-            .role(ROLE_ + MEMBER)
-            .build();
-
-    Authentication authentication = mock(Authentication.class);
-    when(authentication.getPrincipal()).thenReturn(dbMemberDetails);
-    when(authentication.getAuthorities()).thenAnswer(answer -> dbMemberDetails.getAuthorities());
-
-    when(mockAuthenticationManager.authenticate(any())).thenReturn(authentication);
-  }
-
   @Test
   @DisplayName("로그인 -> 발급된 RT는 Blacklist에 없다.")
   void newRefreshTokenNotExistInBlackList() throws Exception {

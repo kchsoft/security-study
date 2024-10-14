@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -37,6 +38,7 @@ import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.TestExecutionListeners.MergeMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import security_study.auth.config.AuthenticationManagerTestConfiguration;
 import security_study.auth.domain.CustomUserDetails;
 import security_study.auth.dto.request.LoginRequestDto;
 import security_study.auth.dto.response.ReissueResponseDto;
@@ -49,6 +51,7 @@ import security_study.auth.service.CookieUtil;
 @TestExecutionListeners(
     listeners = ContextCreationListener.class,
     mergeMode = MergeMode.MERGE_WITH_DEFAULTS)
+@Import(AuthenticationManagerTestConfiguration.class)
 public class JwtRefreshTokenTest {
 
   /*
@@ -63,38 +66,19 @@ public class JwtRefreshTokenTest {
    * spring security 가 사용하는 AuthenticationManager 대신, 여기있는 mockAuthenticationManager 가 대신 실행된다.
    * 즉, 실제 돌아가는 security 상에서 아래의 가짜 객체(MockAuthenticationManager)로 바꿔치기 하는 것 이다.
    * */
-  @MockBean private AuthenticationManager mockAuthenticationManager;
+  @Autowired private AuthenticationManager mockAuthenticationManager;
   @MockBean private RefreshTokenCacheRepository refreshTokenCacheRepository;
-
-  private String RT_PREFIX = "RT_";
-  private String RT_USERNAME = RT_PREFIX + USERNAME_TEST;
-  private String RT_PASSWORD = RT_PREFIX + RAW_PASSWORD_TEST;
-  private UserDetails dbMemberDetails;
 
   @BeforeEach
   void setUp() {
-    dbMemberDetails =
-        CustomUserDetails.builder()
-            .username(RT_USERNAME)
-            .password(RT_PASSWORD)
-            .role(ROLE_ + MEMBER)
-            .build();
-
-    Authentication mockAuthentication = mock(Authentication.class);
-    when(mockAuthenticationManager.authenticate(any())).thenReturn(mockAuthentication);
-    when(mockAuthentication.getPrincipal()).thenAnswer(param -> dbMemberDetails);
-
     when(refreshTokenCacheRepository.equalsFrom(anyString(), anyString())).thenReturn(true);
   }
-
-  @AfterEach
-  void cleanup() {}
 
   @Test
   @DisplayName("로그인 -> Refresh Token 발급 성공")
   void loginCreateRefreshToken() throws Exception {
     LoginRequestDto loginRequest =
-        LoginRequestDto.builder().username(RT_USERNAME).password(RT_PASSWORD).build();
+        LoginRequestDto.builder().username(USERNAME_TEST).password(RAW_PASSWORD_TEST).build();
     MvcResult result =
         mockMvc
             .perform(
@@ -108,11 +92,11 @@ public class JwtRefreshTokenTest {
 
     MockHttpServletResponse response = result.getResponse();
     Cookie cookie = response.getCookie(REFRESH_TOKEN);
-    assertThat(cookie).isNotNull();
+    assertThat(cookie).as("").isNotNull();
     String refreshToken = cookie.getValue();
     assertThat(JwtUtil.getUsername(refreshToken))
         .as("입력한 유저 ID와 JWT 클레임의 유저 ID가 서로 다릅니다.")
-        .isEqualTo(RT_USERNAME);
+        .isEqualTo(USERNAME_TEST);
     assertThat(JwtUtil.getRole(refreshToken))
         .as("사용자의 ROLE과 JWT 클레임의 ROLE이 서로 다릅니다.")
         .isEqualTo(ROLE_ + MEMBER);
@@ -127,7 +111,7 @@ public class JwtRefreshTokenTest {
   void reissueAccessTokenRefreshToken() throws Exception {
     String beforeRefresh =
         JwtUtil.createJwt(
-            CATEGORY_REFRESH, RT_USERNAME, ROLE_ + MEMBER, REFRESH_TOKEN_EXPIRATION_TIME);
+            CATEGORY_REFRESH, USERNAME_TEST, ROLE_ + MEMBER, REFRESH_TOKEN_EXPIRATION_TIME);
 
     MvcResult mvcResult =
         mockMvc
@@ -164,14 +148,14 @@ public class JwtRefreshTokenTest {
         .isEqualTo(ROLE_ + MEMBER);
     assertThat(JwtUtil.getUsername(newAccessToken))
         .as("올바른 사용자의 token이 아닙니다.")
-        .isEqualTo(RT_USERNAME);
+        .isEqualTo(USERNAME_TEST);
   }
 
   @Test
   @DisplayName("만료된 RT -> 토큰 재발급X")
   void expiredRefreshToReissue() throws Exception {
     String expiredRefreshToken =
-        JwtUtil.createJwt(CATEGORY_REFRESH, RT_USERNAME, ROLE_ + MEMBER, -1000L);
+        JwtUtil.createJwt(CATEGORY_REFRESH, USERNAME_TEST, ROLE_ + MEMBER, -1000L);
     MvcResult mvcResult =
         mockMvc
             .perform(post("/reissue").cookie(CookieUtil.create(REFRESH_TOKEN, expiredRefreshToken)))

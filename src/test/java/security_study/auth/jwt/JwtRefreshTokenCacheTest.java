@@ -59,32 +59,12 @@ public class JwtRefreshTokenCacheTest {
 
   @Autowired private AuthenticationManager mockAuthenticationManager;
 
-  @Mock UserDetails dbMemberDetails;
-
-  private final String CACHE_PREFIX = "CACHE_";
-  private final String CACHE_USERNAME = CACHE_PREFIX + USERNAME_TEST;
-  private final String CACHE_PASSWORD = CACHE_PREFIX + RAW_PASSWORD_TEST;
-
-  @BeforeEach
-  void setup() {
-    dbMemberDetails =
-        CustomUserDetails.builder()
-            .username(CACHE_USERNAME)
-            .password(CACHE_PASSWORD)
-            .role(ROLE_ + MEMBER)
-            .build();
-
-    Authentication authentication = mock(Authentication.class);
-    when(authentication.getPrincipal()).thenReturn(dbMemberDetails);
-
-    when(mockAuthenticationManager.authenticate(any())).thenReturn(authentication);
-  }
 
   @Test
   @DisplayName("로그인 -> 발급된 RT는 Cache에 저장")
   void loginSaveRtToCache() throws Exception {
     LoginRequestDto loginRequest =
-        LoginRequestDto.builder().username(CACHE_USERNAME).password(CACHE_PASSWORD).build();
+        LoginRequestDto.builder().username(USERNAME_TEST).password(RAW_PASSWORD_TEST).build();
     MvcResult result =
         mockMvc
             .perform(
@@ -106,12 +86,12 @@ public class JwtRefreshTokenCacheTest {
         .isEqualTo(CATEGORY_REFRESH);
     assertThat(JwtUtil.getUsername(refreshToken))
         .as("입력한 유저 ID와 JWT 클레임의 유저 ID가 서로 다릅니다.")
-        .isEqualTo(CACHE_USERNAME);
+        .isEqualTo(USERNAME_TEST);
     assertThat(JwtUtil.getRole(refreshToken))
         .as("사용자의 ROLE과 JWT 클레임의 ROLE이 서로 다릅니다.")
         .isEqualTo(ROLE_ + MEMBER);
     assertThat(cookie.isHttpOnly()).as("쿠키에 HttpOnly가 True로 설정되지 않았습니다.").isTrue();
-    assertThat(refreshToken).isEqualTo(refreshTokenCacheRepository.get(CACHE_USERNAME));
+    assertThat(refreshToken).isEqualTo(refreshTokenCacheRepository.get(USERNAME_TEST));
   }
 
   @Test
@@ -119,8 +99,8 @@ public class JwtRefreshTokenCacheTest {
   void reissueRefreshToken() throws Exception {
     String beforeRefresh =
         JwtUtil.createJwt(
-            CATEGORY_REFRESH, CACHE_USERNAME, ROLE_ + MEMBER, REFRESH_TOKEN_EXPIRATION_TIME);
-    refreshTokenCacheRepository.save(CACHE_USERNAME, beforeRefresh);
+            CATEGORY_REFRESH, USERNAME_TEST, ROLE_ + MEMBER, REFRESH_TOKEN_EXPIRATION_TIME);
+    refreshTokenCacheRepository.save(USERNAME_TEST, beforeRefresh);
 
     MvcResult mvcResult =
         mockMvc
@@ -135,7 +115,7 @@ public class JwtRefreshTokenCacheTest {
     assertThat(cookie.isHttpOnly()).as("쿠키에 HttpOnly가 True로 설정되지 않았습니다.").isTrue();
     String afterRefresh = cookie.getValue();
     assertThat(afterRefresh).as("쿠키에 새로운 RT 값이 없습니다.").isNotNull().isNotBlank();
-    assertThat(refreshTokenCacheRepository.get(CACHE_USERNAME))
+    assertThat(refreshTokenCacheRepository.get(USERNAME_TEST))
         .as("새로운 RT와 캐쉬의 RT가 서로 다릅니다.")
         .isEqualTo(afterRefresh);
     assertThat(afterRefresh).as("요청 쿠키 RT와 새로운 RT가 똑같습니다.").isNotEqualTo(beforeRefresh);
@@ -146,8 +126,8 @@ public class JwtRefreshTokenCacheTest {
   void cacheDelExpiredRefreshToken() throws Exception {
     long expiredTime = 1000L;
     String expiredRefreshToken =
-        JwtUtil.createJwt(CATEGORY_REFRESH, CACHE_USERNAME, ROLE_ + MEMBER, expiredTime);
-    refreshTokenCacheRepository.save(CACHE_USERNAME, expiredRefreshToken);
+        JwtUtil.createJwt(CATEGORY_REFRESH, USERNAME_TEST, ROLE_ + MEMBER, expiredTime);
+    refreshTokenCacheRepository.save(USERNAME_TEST, expiredRefreshToken);
 
     Thread.sleep(1100L);
 
@@ -157,7 +137,7 @@ public class JwtRefreshTokenCacheTest {
             .andDo(print())
             .andExpect(status().isFound())
             .andReturn();
-    assertThat(refreshTokenCacheRepository.equalsFrom(CACHE_USERNAME, expiredRefreshToken))
+    assertThat(refreshTokenCacheRepository.equalsFrom(USERNAME_TEST, expiredRefreshToken))
         .as("cache에 RT가 남아있습니다.")
         .isFalse();
   }
