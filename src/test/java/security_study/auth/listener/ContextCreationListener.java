@@ -7,6 +7,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.TestExecutionListener;
 
@@ -29,6 +30,7 @@ public class ContextCreationListener implements TestExecutionListener {
   private static final Logger log = LoggerFactory.getLogger(ContextCreationListener.class);
   private LocalDateTime localStartTime;
   private static LocalDateTime globalStartTime = null;
+  private RedisTemplate redisTemplate;
 
   @Override
   public void beforeTestClass(TestContext testContext) {
@@ -43,6 +45,21 @@ public class ContextCreationListener implements TestExecutionListener {
     log.info("Context Package Id = {}", testContext.getApplicationContext().getId());
     log.info("Spring Context Hashcode = {}", testContext.getApplicationContext().hashCode());
     log.info("Used Spring Context Size  = {}", contextSet.size());
+
+    redisTemplate =
+        testContext
+            .getApplicationContext()
+            .getBean("refreshTokenRedisTemplate", RedisTemplate.class);
+  }
+
+  /*
+   * beforeTestMethod -> beforeTestExecution -> Test Class Method -> afterTestExecution -> afterTestMethod 순서로 진행.
+   * afterTestExecution : 메소드 실행 직후, Transaction RollBack 이나 Context정리 이전에 호출됨.
+   * afterTestMethod : 테스트 메서드 관련 모든 처리(RollBack,Context 정리 등등) 이후에 호출됨.
+   * */
+  @Override
+  public void afterTestMethod(TestContext testContext) throws Exception {
+    redisTemplate.delete(redisTemplate.keys("*"));
   }
 
   @Override

@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static security_study.auth.config.MemberInfoConstant.NICKNAME_TEST;
 import static security_study.auth.config.MemberInfoConstant.RAW_PASSWORD_TEST;
 import static security_study.auth.config.MemberInfoConstant.USERNAME_TEST;
 import static security_study.auth.constant.AuthoritiesRoleName.MEMBER;
@@ -20,7 +19,6 @@ import static security_study.auth.constant.JwtConstant.CATEGORY_ACCESS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,7 +40,6 @@ import security_study.auth.domain.CustomUserDetails;
 import security_study.auth.dto.request.LoginRequestDto;
 import security_study.auth.dto.response.LoginResponseDto;
 import security_study.auth.listener.ContextCreationListener;
-import security_study.auth.repository.RefreshTokenCacheRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -58,7 +55,6 @@ public class JwtAccessTokenTest {
   */
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
-  @Autowired private RefreshTokenCacheRepository refreshTokenCacheRepository;
 
   /*
    * @MockBean
@@ -70,7 +66,6 @@ public class JwtAccessTokenTest {
   private String AT_PREFIX = "AT_";
   private String AT_USERNAME = AT_PREFIX + USERNAME_TEST;
   private String AT_PASSWORD = AT_PREFIX + RAW_PASSWORD_TEST;
-  private String AT_NICKNAME = AT_PREFIX + NICKNAME_TEST;
 
   private UserDetails dbMemberDetails;
 
@@ -104,11 +99,6 @@ public class JwtAccessTokenTest {
     // ex) getAuthorities()를 호출하면, 사전에 정의한 dbMemberDetails의 authorities를 반환하라!
     // 사용 이유 : 메서드 인자에 기반한 응답 생성, 호출 횟수에 따른 다른 응답 제공, 복잡한 로직 시뮬, 예외 발생 조건 테스트
     when(mockAuthentication.getAuthorities()).thenAnswer(param -> dbMemberDetails.getAuthorities());
-  }
-
-  @AfterEach
-  void cleanUp() {
-    refreshTokenCacheRepository.delete(AT_USERNAME);
   }
 
   @Test

@@ -18,16 +18,16 @@ import static security_study.auth.constant.JwtConstant.REFRESH_TOKEN_EXPIRATION_
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,7 +36,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.TestExecutionListeners.MergeMode;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import security_study.auth.domain.CustomUserDetails;
@@ -57,6 +56,10 @@ public class JwtRefreshTokenCacheTest {
   @Autowired private ObjectMapper objectMapper;
   @Autowired private MockMvc mockMvc;
   @Autowired private RefreshTokenCacheRepository refreshTokenCacheRepository;
+
+  @Autowired
+  @Qualifier("blacklistRedisTemplate")
+  RedisTemplate<String, String> blacklistRedisTemplate;
 
   @MockBean private AuthenticationManager mockAuthenticationManager;
 
@@ -79,11 +82,6 @@ public class JwtRefreshTokenCacheTest {
     when(authentication.getPrincipal()).thenReturn(dbMemberDetails);
 
     when(mockAuthenticationManager.authenticate(any())).thenReturn(authentication);
-  }
-
-  @AfterEach
-  void cleanup() {
-    refreshTokenCacheRepository.delete(CACHE_USERNAME);
   }
 
   @Test
@@ -163,7 +161,7 @@ public class JwtRefreshTokenCacheTest {
             .andDo(print())
             .andExpect(status().isFound())
             .andReturn();
-    assertThat(refreshTokenCacheRepository.equalsFrom(CACHE_USERNAME,expiredRefreshToken))
+    assertThat(refreshTokenCacheRepository.equalsFrom(CACHE_USERNAME, expiredRefreshToken))
         .as("cache에 RT가 남아있습니다.")
         .isFalse();
   }

@@ -18,7 +18,6 @@ import static security_study.auth.constant.JwtConstant.REFRESH_TOKEN_EXPIRATION_
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -81,12 +80,6 @@ public class JwtRefreshTokenBlacklistTest {
     when(authentication.getAuthorities()).thenAnswer(answer -> dbMemberDetails.getAuthorities());
 
     when(mockAuthenticationManager.authenticate(any())).thenReturn(authentication);
-  }
-
-  @AfterEach
-  void cleanup() {
-    blacklistRedisTemplate.delete(blacklistRedisTemplate.keys("*"));
-    refreshTokenCacheRepository.delete(USERNAME_TEST);
   }
 
   @Test
@@ -170,7 +163,7 @@ public class JwtRefreshTokenBlacklistTest {
         .isTrue();
 
     // cache refresh token validation
-    assertThat(refreshTokenCacheRepository.equalsFrom(USERNAME_TEST,cacheRefresh))
+    assertThat(refreshTokenCacheRepository.equalsFrom(USERNAME_TEST, cacheRefresh))
         .as("cache RT가 Cache에 없습니다.")
         .isTrue();
   }
