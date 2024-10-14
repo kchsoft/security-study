@@ -38,7 +38,6 @@ public class SecurityConfig {
   private final ObjectMapper objectMapper;
   private final RefreshTokenCacheRepository refreshTokenCacheRepository;
   private final BlacklistCacheRepository blacklistCacheRepository;
-  private final AuthenticationManager authenticationManager;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -68,7 +67,7 @@ public class SecurityConfig {
     http.addFilterBefore(new JwtValidationFilter(), JwtAuthenticationFilter.class);
     http.addFilterAt(
         new JwtAuthenticationFilter(
-            authenticationManager,
+            authenticationManager(authenticationConfiguration),
             objectMapper,
             refreshTokenCacheRepository),
         UsernamePasswordAuthenticationFilter

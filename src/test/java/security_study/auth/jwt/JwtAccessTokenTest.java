@@ -1,9 +1,6 @@
 package security_study.auth.jwt;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -19,7 +16,6 @@ import static security_study.auth.constant.JwtConstant.CATEGORY_ACCESS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,15 +25,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.TestExecutionListeners.MergeMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import security_study.auth.config.AuthenticationManagerTestConfiguration;
-import security_study.auth.domain.CustomUserDetails;
 import security_study.auth.dto.request.LoginRequestDto;
 import security_study.auth.dto.response.LoginResponseDto;
 import security_study.auth.listener.ContextCreationListener;
@@ -63,7 +55,6 @@ public class JwtAccessTokenTest {
    * spring security 가 사용하는 AuthenticationManager 대신, 여기있는 mockAuthenticationManager 가 대신 실행된다.
    * 즉, 실제 돌아가는 security 상에서 아래의 가짜 객체(MockAuthenticationManager)로 바꿔치기 하는 것 이다.
    * */
-  @Autowired private AuthenticationManager mockAuthenticationManager;
 
   @Test
   @DisplayName("로그인 -> Access Token 생성")

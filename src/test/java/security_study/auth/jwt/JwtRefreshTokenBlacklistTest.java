@@ -1,9 +1,6 @@
 package security_study.auth.jwt;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,7 +15,6 @@ import static security_study.auth.constant.JwtConstant.REFRESH_TOKEN_EXPIRATION_
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,15 +25,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.TestExecutionListeners.MergeMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import security_study.auth.config.AuthenticationManagerTestConfiguration;
-import security_study.auth.domain.CustomUserDetails;
 import security_study.auth.dto.request.LoginRequestDto;
 import security_study.auth.listener.ContextCreationListener;
 import security_study.auth.repository.BlacklistCacheRepository;
@@ -62,8 +54,6 @@ public class JwtRefreshTokenBlacklistTest {
   RedisTemplate<String, String> blacklistRedisTemplate;
 
   @Autowired ObjectMapper objectMapper;
-
-  @Autowired AuthenticationManager mockAuthenticationManager;
 
   @Test
   @DisplayName("로그인 -> 발급된 RT는 Blacklist에 없다.")

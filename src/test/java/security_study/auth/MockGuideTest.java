@@ -9,21 +9,11 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.TestExecutionListeners;
-import org.springframework.test.context.TestExecutionListeners.MergeMode;
-import security_study.auth.config.AuthenticationManagerTestConfiguration;
-import security_study.auth.listener.ContextCreationListener;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@TestExecutionListeners(
-    listeners = ContextCreationListener.class,
-    mergeMode = MergeMode.MERGE_WITH_DEFAULTS)
-@Import(AuthenticationManagerTestConfiguration.class)
+@ExtendWith(MockitoExtension.class)
 public class MockGuideTest {
 
   /*
